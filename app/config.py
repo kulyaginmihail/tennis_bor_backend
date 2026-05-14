@@ -16,5 +16,13 @@ class Settings(BaseSettings):
         env_file = ".env"
         extra = "ignore"
 
+    def model_post_init(self, __context):
+        # Railway provides DATABASE_URL as postgresql:// — asyncpg needs postgresql+asyncpg://
+        url = self.database_url
+        if url.startswith("postgresql://"):
+            object.__setattr__(self, "database_url", url.replace("postgresql://", "postgresql+asyncpg://", 1))
+        elif url.startswith("postgres://"):
+            object.__setattr__(self, "database_url", url.replace("postgres://", "postgresql+asyncpg://", 1))
+
 
 settings = Settings()
