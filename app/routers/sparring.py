@@ -9,7 +9,7 @@ import httpx
 from app.database import get_db
 from app.models.sparring import Match, MatchParticipant, SparringRequest, MatchFormat, MatchStatus
 from app.models.user import User
-from app.services.stats import get_or_create_stats, _update_streak, check_achievements
+from app.services.stats import get_or_create_stats, _update_streak, _update_elo, check_achievements
 
 router = APIRouter(prefix="/api/sparring", tags=["sparring"])
 
@@ -300,14 +300,25 @@ async def _update_sparring_stats(match: Match, participants: list, db: AsyncSess
             if p.user_id:
                 (winner_ids if p.team == match.score_winner else loser_ids).append(p.user_id)
 
+    winner_stats_list = []
     for uid in winner_ids:
         s = await get_or_create_stats(uid, db)
         s.matches_total += 1; s.matches_won += 1; s.monthly_wins += 1; s.monthly_matches += 1
-        _update_streak(s, now); await db.flush(); await check_achievements(uid, s, db)
+        _update_streak(s, now); winner_stats_list.append(s)
+    loser_stats_list = []
     for uid in loser_ids:
         s = await get_or_create_stats(uid, db)
         s.matches_total += 1; s.matches_lost += 1; s.monthly_matches += 1
-        _update_streak(s, now); await db.flush(); await check_achievements(uid, s, db)
+        _update_streak(s, now); loser_stats_list.append(s)
+
+    # Apply ELO update for 1v1 matches
+    if len(winner_stats_list) == 1 and len(loser_stats_list) == 1:
+        _update_elo(winner_stats_list[0], loser_stats_list[0])
+
+    for uid, s in zip(winner_ids, winner_stats_list):
+        await db.flush(); await check_achievements(uid, s, db)
+    for uid, s in zip(loser_ids, loser_stats_list):
+        await db.flush(); await check_achievements(uid, s, db)
 
 
 # ── Sparring Requests ──────────────────────────────────────────
