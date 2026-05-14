@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>БОР Админ — Падел-Теннис</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green-dark: #1a3a1a;
+      --green-mid: #2a5a2a;
+      --green-light: #3a7a3a;
+      --lime: #a8d878;
+      --lime-dark: #8ac058;
+      --cream: #f5f5f0;
+      --cream-dark: #e8e8e0;
+      --white: #ffffff;
+      --text: #1a1a1a;
+      --text-muted: #6b7280;
+      --danger: #dc2626;
+      --danger-dark: #b91c1c;
+      --shadow: 0 2px 12px rgba(0,0,0,0.10);
+      --radius: 12px;
+      --sidebar-w: 240px;
+    }
+
+    body {
+      font-family: 'Manrope', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== LOGIN ===== */
+    #login-overlay {
+      position: fixed; inset: 0;
+      background: linear-gradient(135deg, var(--green-dark) 0%, #0f2a0f 100%);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+    }
+    .login-card {
+      background: var(--white);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 380px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .login-logo {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 22px;
+      color: var(--green-dark);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .login-sub {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: 36px;
+    }
+    .login-card label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green-dark);
+      margin-bottom: 6px;
+    }
+    .login-card input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: 'Manrope', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 20px;
+    }
+    .login-card input:focus { border-color: var(--lime); }
+    .login-card .btn-primary {
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      margin-top: 4px;
+    }
+    #login-error {
+      color: var(--danger);
+      font-size: 13px;
+      text-align: center;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+
+    /* ===== LAYOUT ===== */
+    #layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--green-dark);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 17px;
+      color: var(--lime);
+      padding: 28px 24px 20px;
+      letter-spacing: 0.02em;
+      border-bottom: 1px solid rgba(168,216,120,0.15);
+    }
+    .sidebar-logo span {
+      display: block;
+      font-size: 10px;
+      font-family: 'Manrope', sans-serif;
+      color: rgba(255,255,255,0.45);
+      font-weight: 500;
+      margin-top: 2px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.7);
+      transition: background 0.18s, color 0.18s;
+      user-select: none;
+    }
+    .nav-item:hover {
+      background: rgba(168,216,120,0.12);
+      color: var(--white);
+    }
+    .nav-item.active {
+      background: var(--lime);
+      color: var(--green-dark);
+      font-weight: 700;
+    }
+    .nav-item .nav-icon { font-size: 16px; flex-shrink: 0; }
+    .sidebar-bottom {
+      padding: 16px 12px 24px;
+      border-top: 1px solid rgba(168,216,120,0.15);
+    }
+    .btn-logout {
+      width: 100%;
+      padding: 10px 14px;
+      background: transparent;
+      border: 1.5px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    .btn-logout:hover {
+      border-color: var(--lime);
+      color: var(--lime);
+    }
+
+    /* ===== CONTENT ===== */
+    .content {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 36px 40px;
+      min-height: 100vh;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-title {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 20px;
+      color: var(--green-dark);
+      margin-bottom: 28px;
+    }
+
+    /* ===== CARDS ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .stat-icon {
+      font-size: 28px;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-family: 'Unbounded', sans-serif;
+      font-size: 32px;
+      color: var(--green-dark);
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* ===== TABLE ===== */
+    .table-wrap {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      background: var(--green-dark);
+      color: var(--lime);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 14px 16px;
+      text-align: left;
+      white-space: nowrap;
+    }
+    thead th:first-child { border-radius: 12px 0 0 0; }
+    thead th:last-child { border-radius: 0 12px 0 0; }
+    tbody tr {
+      border-bottom: 1px solid var(--cream);
+      transition: background 0.15s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #f0f7e8; }
+    tbody td {
+      padding: 13px 16px;
+      font-size: 14px;
+      color: var(--text);
+      vertical-align: middle;
+    }
+    .empty-row td {
+      text-align: center;
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 32px;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: var(--lime);
+      color: var(--green-dark);
+    }
+    .btn-primary:hover { background: var(--lime-dark); }
+    .btn-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+    .btn-danger:hover { background: var(--danger); color: var(--white); }
+    .btn-secondary {
+      background: var(--cream-dark);
+      color: var(--text);
+    }
+    .btn-secondary:hover { background: #d0d0c8; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; }
+    .btn-group { display: flex; gap: 6px; }
+
+    /* ===== BADGE ===== */
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .badge-green { background: #d1fae5; color: #065f46; }
+    .badge-yellow { background: #fef3c7; color: #92400e; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-gray { background: #f3f4f6; color: #374151; }
+
+    /* ===== FORM ===== */
+    .form-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+    .form-title {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--green-dark);
+      margin-bottom: 20px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--green-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 10px 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Manrope', sans-serif;
+      outline: none;
+      transition: border-color 0.18s;
+      background: var(--white);
+      color: var(--text);
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--lime); }
+    .form-group.checkbox-group {
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+    }
+    .form-group.checkbox-group label {
+      text-transform: none;
+      font-size: 14px;
+      letter-spacing: 0;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .form-group input[type="checkbox"] {
+      width: 18px; height: 18px;
+      cursor: pointer;
+      accent-color: var(--lime);
+      padding: 0;
+      border: none;
+    }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* ===== SECTION HEADER ===== */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    /* ===== LOADING ===== */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      color: var(--text-muted);
+      font-size: 14px;
+      gap: 10px;
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--cream-dark);
+      border-top-color: var(--green-dark);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== TOAST ===== */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .toast {
+      background: var(--green-dark);
+      color: var(--white);
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      border-left: 4px solid var(--lime);
+      animation: slideIn 0.25s ease;
+      max-width: 320px;
+    }
+    .toast.error {
+      border-left-color: var(--danger);
+      background: #450a0a;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(40px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--cream-dark); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #c0c0b8; }
+
+    /* ===== UTILS ===== */
+    .mt-20 { margin-top: 20px; }
+    .text-muted { color: var(--text-muted); }
+    .text-sm { font-size: 12px; }
+    .fw-bold { font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- LOGIN OVERLAY -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <div class="login-logo">БОР Админ</div>
+      <div class="login-sub">Падел-Теннис БОР · Панель управления</div>
+      <label for="login-username">Логин</label>
+      <input type="text" id="login-username" placeholder="admin" autocomplete="username" />
+      <label for="login-password">Пароль</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') login()" />
+      <button class="btn btn-primary" onclick="login()">Войти</button>
+      <div id="login-error"></div>
+    </div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div id="layout" style="display:none">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+      <div class="sidebar-logo">
+        БОР Админ
+        <span>Падел-Теннис БОР</span>
+      </div>
+      <div class="sidebar-nav">
+        <div class="nav-item active" data-section="dashboard" onclick="showSection('dashboard')">
+          <span class="nav-icon">📊</span> Дашборд
+        </div>
+        <div class="nav-item" data-section="matches" onclick="showSection('matches')">
+          <span class="nav-icon">🎾</span> Матчи
+        </div>
+        <div class="nav-item" data-section="sparring" onclick="showSection('sparring')">
+          <span class="nav-icon">📋</span> Заявки на спарринг
+        </div>
+        <div class="nav-item" data-section="leads" onclick="showSection('leads')">
+          <span class="nav-icon">📬</span> Лиды
+        </div>
+        <div class="nav-item" data-section="certificates" onclick="showSection('certificates')">
+          <span class="nav-icon">🎁</span> Сертификаты
+        </div>
+        <div class="nav-item" data-section="tournaments" onclick="showSection('tournaments')">
+          <span class="nav-icon">🏆</span> Турниры
+        </div>
+        <div class="nav-item" data-section="users" onclick="showSection('users')">
+          <span class="nav-icon">👥</span> Пользователи
+        </div>
+      </div>
+      <div class="sidebar-bottom">
+        <button class="btn-logout" onclick="logout()">⬅ Выйти</button>
+      </div>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="content">
+
+      <!-- DASHBOARD -->
+      <div id="section-dashboard" class="section active">
+        <div class="section-title">📊 Дашборд</div>
+        <div class="stats-grid" id="stats-grid">
+          <div class="loading"><div class="spinner"></div> Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- MATCHES -->
+      <div id="section-matches" class="section">
+        <div class="section-header">
+          <div class="section-title" style="margin-bottom:0">🎾 Матчи</div>
+          <button class="btn btn-primary" onclick="loadMatches()">↻ Обновить</button>
+        </div>
+        <div class="table-wrap" id="matches-table">
+          <div class="loading"><div class="spinner"></div> Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- SPARRING REQUESTS -->
+      <div id="section-sparring" class="section">
+        <div class="section-header">
+          <div class="section-title" style="margin-bottom:0">📋 Заявки на спарринг</div>
+          <button class="btn btn-primary" onclick="loadSparringRequests()">↻ Обновить</button>
+        </div>
+        <div class="table-wrap" id="sparring-table">
+          <div class="loading"><div class="spinner"></div> Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- LEADS -->
+      <div id="section-leads" class="section">
+        <div class="section-header">
+          <div class="section-title" style="margin-bottom:0">📬 Лиды</div>
+          <button class="btn btn-primary" onclick="loadLeads()">↻ Обновить</button>
+        </div>
+        <div class="table-wrap" id="leads-table">
+          <div class="loading"><div class="spinner"></div> Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- CERTIFICATES -->
+      <div id="section-certificates" class="section">
+        <div class="section-header">
+          <div class="section-title" style="margin-bottom:0">🎁 Сертификаты</div>
+          <button class="btn btn-primary" onclick="loadCertificates()">↻ Обновить</button>
+        </div>
+        <div class="table-wrap" id="certificates-table">
+          <div class="loading"><div class="spinner"></div> Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- TOURNAMENTS -->
+      <div id="section-tournaments" class="section">
+        <div class="section-header">
+          <div class="section-title" style="margin-bottom:0">🏆 Турниры</div>
+          <button class="btn btn-primary" onclick="toggleTournamentForm()">+ Создать турнир</button>
+        </div>
+
+        <div id="tournament-form-wrap" style="display:none" class="mt-20">
+          <div class="form-card">
+            <div class="form-title">Новый турнир</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Название *</label>
+                <input type="text" id="t-title" placeholder="Открытый чемпионат БОР" />
+              </div>
+              <div class="form-group">
+                <label>Вид спорта</label>
+                <select id="t-sport">
+                  <option value="padel">Падел</option>
+                  <option value="tennis">Теннис</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Статус</label>
+                <select id="t-status">
+                  <option value="upcoming">Предстоящий</option>
+                  <option value="open">Регистрация открыта</option>
+                  <option value="live">Идёт</option>
+                  <option value="past">Завершён</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Дата</label>
+                <input type="text" id="t-date" placeholder="01.06.2026" />
+              </div>
+              <div class="form-group">
+                <label>Формат</label>
+                <input type="text" id="t-format" placeholder="6 пар · 3 часа" />
+              </div>
+              <div class="form-group">
+                <label>Макс. участников</label>
+                <input type="number" id="t-maxplayers" placeholder="24" min="2" />
+              </div>
+              <div class="form-group">
+                <label>Взнос ₽</label>
+                <input type="number" id="t-fee" placeholder="1500" min="0" />
+              </div>
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="t-published" checked />
+                <label for="t-published">Опубликовать</label>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="createTournament()">Создать</button>
+              <button class="btn btn-secondary" onclick="toggleTournamentForm()">Отмена</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap mt-20" id="tournaments-table">
+          <div class="loading"><div class="spinner"></div> Загрузка...</div>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div id="section-users" class="section">
+        <div class="section-header">
+          <div class="section-title" style="margin-bottom:0">👥 Пользователи</div>
+          <button class="btn btn-primary" onclick="loadUsers()">↻ Обновить</button>
+        </div>
+        <div class="table-wrap" id="users-table">
+          <div class="loading"><div class="spinner"></div> Загрузка...</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+const API = '';
+let currentSection = 'dashboard';
+
+// ===== TOAST =====
+function toast(msg, type = 'success') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type === 'error' ? ' error' : '');
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ===== API =====
+async function api(path, options = {}) {
+  const token = localStorage.getItem('bor_admin_token');
+  try {
+    const res = await fetch(API + path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        ...(options.headers || {}),
+      },
+    });
+    if (res.status === 401) {
+      localStorage.removeItem('bor_admin_token');
+      showLogin();
+      toast('Сессия истекла. Войдите снова.', 'error');
+      return null;
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.json();
+  } catch (e) {
+    toast('Ошибка: ' + e.message, 'error');
+    return null;
+  }
+}
+
+// ===== AUTH =====
+window.onload = () => {
+  const token = localStorage.getItem('bor_admin_token');
+  if (token) showApp();
+  else showLogin();
+};
+
+function showLogin() {
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('layout').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('layout').style.display = 'flex';
+  showSection('dashboard');
+}
+
+async function login() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if (!username || !password) { errEl.textContent = 'Введите логин и пароль'; return; }
+  try {
+    const res = await fetch(API + '/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      errEl.textContent = data.detail || 'Неверный логин или пароль';
+      return;
+    }
+    const data = await res.json();
+    localStorage.setItem('bor_admin_token', data.access_token);
+    showApp();
+  } catch (e) {
+    errEl.textContent = 'Ошибка соединения: ' + e.message;
+  }
+}
+
+function logout() {
+  localStorage.removeItem('bor_admin_token');
+  showLogin();
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').textContent = '';
+}
+
+// ===== NAVIGATION =====
+function showSection(name) {
+  currentSection = name;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  document.querySelector('[data-section="' + name + '"]').classList.add('active');
+  const loaders = {
+    dashboard: loadDashboard,
+    matches: loadMatches,
+    sparring: loadSparringRequests,
+    leads: loadLeads,
+    certificates: loadCertificates,
+    tournaments: loadTournaments,
+    users: loadUsers,
+  };
+  if (loaders[name]) loaders[name]();
+}
+
+// ===== HELPERS =====
+function fmtDate(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  if (isNaN(d)) return str;
+  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function loadingHtml() {
+  return '<div class="loading"><div class="spinner"></div> Загрузка...</div>';
+}
+
+function emptyTable(cols) {
+  return `<tr class="empty-row"><td colspan="${cols}" style="text-align:center;color:var(--text-muted);font-style:italic;padding:32px">Нет данных</td></tr>`;
+}
+
+// ===== DASHBOARD =====
+async function loadDashboard() {
+  const grid = document.getElementById('stats-grid');
+  grid.innerHTML = loadingHtml();
+  const data = await api('/api/admin/stats');
+  if (!data) { grid.innerHTML = '<div class="loading">Не удалось загрузить данные</div>'; return; }
+
+  const cards = [
+    { icon: '👥', label: 'Пользователей', value: data.users ?? data.users_count ?? '—' },
+    { icon: '🎾', label: 'Активных матчей', value: data.active_matches ?? '—' },
+    { icon: '📋', label: 'Заявок на спарринг', value: data.sparring_requests ?? '—' },
+    { icon: '📬', label: 'Лидов', value: data.leads ?? '—' },
+    { icon: '🎁', label: 'Сертификатов', value: data.gifts ?? data.certificates ?? '—' },
+    { icon: '🏆', label: 'Турниров', value: data.tournaments ?? '—' },
+  ].filter(c => c.value !== undefined);
+
+  grid.innerHTML = cards.map(c => `
+    <div class="stat-card">
+      <div class="stat-icon">${c.icon}</div>
+      <div class="stat-value">${c.value}</div>
+      <div class="stat-label">${c.label}</div>
+    </div>
+  `).join('');
+}
+
+// ===== MATCHES =====
+async function loadMatches() {
+  const el = document.getElementById('matches-table');
+  el.innerHTML = loadingHtml();
+  const data = await api('/api/admin/matches');
+  if (!data) { el.innerHTML = '<div class="loading">Ошибка загрузки</div>'; return; }
+  const rows = Array.isArray(data) ? data : (data.items || data.matches || []);
+
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Название</th><th>Организатор</th><th>Формат</th>
+          <th>Дата</th><th>Корт</th><th>Слоты</th><th>Счёт</th><th>Статус</th><th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.length === 0 ? emptyTable(10) : rows.map(m => `
+          <tr>
+            <td class="text-muted text-sm">${m.id ?? '—'}</td>
+            <td class="fw-bold">${m.title ?? m.name ?? '—'}</td>
+            <td>${m.organizer ?? m.organizer_name ?? '—'}</td>
+            <td>${m.format ?? m.match_format ?? '—'}</td>
+            <td class="text-sm">${fmtDate(m.date ?? m.scheduled_at ?? m.created_at)}</td>
+            <td>${m.court ?? m.court_name ?? '—'}</td>
+            <td class="text-sm">${m.slots ?? m.max_players ?? '—'}</td>
+            <td class="text-sm">${m.score ?? '—'}</td>
+            <td>${statusBadge(m.status)}</td>
+            <td>
+              <div class="btn-group">
+                <button class="btn btn-secondary btn-sm" onclick="resetMatchScore(${m.id})" title="Сбросить счёт">↺ Счёт</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteMatch(${m.id})">✕</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function statusBadge(status) {
+  const map = {
+    active: ['badge-green', 'Активный'],
+    open: ['badge-green', 'Открыт'],
+    upcoming: ['badge-yellow', 'Предстоящий'],
+    live: ['badge-blue', 'Идёт'],
+    finished: ['badge-gray', 'Завершён'],
+    past: ['badge-gray', 'Прошёл'],
+    cancelled: ['badge-red', 'Отменён'],
+  };
+  const [cls, label] = map[status] || ['badge-gray', status || '—'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+async function deleteMatch(id) {
+  if (!confirm('Удалить матч #' + id + '?')) return;
+  const res = await api('/api/admin/matches/' + id, { method: 'DELETE' });
+  if (res !== null) { toast('Матч удалён'); loadMatches(); }
+}
+
+async function resetMatchScore(id) {
+  if (!confirm('Сбросить счёт матча #' + id + '?')) return;
+  const res = await api('/api/admin/matches/' + id + '/score', { method: 'DELETE' });
+  if (res !== null) { toast('Счёт сброшен'); loadMatches(); }
+}
+
+// ===== SPARRING REQUESTS =====
+async function loadSparringRequests() {
+  const el = document.getElementById('sparring-table');
+  el.innerHTML = loadingHtml();
+  const data = await api('/api/admin/sparring-requests');
+  if (!data) { el.innerHTML = '<div class="loading">Ошибка загрузки</div>'; return; }
+  const rows = Array.isArray(data) ? data : (data.items || data.requests || []);
+
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Имя</th><th>NTRP</th><th>Формат</th>
+          <th>Удобное время</th><th>Комментарий</th><th>Активна</th><th>Дата</th><th>Действие</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.length === 0 ? emptyTable(9) : rows.map(r => `
+          <tr>
+            <td class="text-muted text-sm">${r.id ?? '—'}</td>
+            <td class="fw-bold">${r.name ?? r.user_name ?? '—'}</td>
+            <td>${r.ntrp ?? '—'}</td>
+            <td>${r.format ?? r.match_format ?? '—'}</td>
+            <td class="text-sm">${r.preferred_time ?? r.time ?? '—'}</td>
+            <td class="text-sm text-muted" style="max-width:180px;word-break:break-word">${r.comment ?? '—'}</td>
+            <td>${r.is_active || r.active ? '<span class="badge badge-green">Да</span>' : '<span class="badge badge-gray">Нет</span>'}</td>
+            <td class="text-sm">${fmtDate(r.created_at ?? r.date)}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteSparring(${r.id})">✕</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function deleteSparring(id) {
+  if (!confirm('Удалить заявку #' + id + '?')) return;
+  const res = await api('/api/admin/sparring-requests/' + id, { method: 'DELETE' });
+  if (res !== null) { toast('Заявка удалена'); loadSparringRequests(); }
+}
+
+// ===== LEADS =====
+async function loadLeads() {
+  const el = document.getElementById('leads-table');
+  el.innerHTML = loadingHtml();
+  const data = await api('/api/admin/leads');
+  if (!data) { el.innerHTML = '<div class="loading">Ошибка загрузки</div>'; return; }
+  const rows = Array.isArray(data) ? data : (data.items || data.leads || []);
+
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Имя</th><th>Категория</th><th>Тип контакта</th><th>Контакт</th><th>Дата</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.length === 0 ? emptyTable(6) : rows.map(l => `
+          <tr>
+            <td class="text-muted text-sm">${l.id ?? '—'}</td>
+            <td class="fw-bold">${l.name ?? '—'}</td>
+            <td>${categoryBadge(l.category)}</td>
+            <td class="text-sm">${l.contact_type ?? l.contact_kind ?? '—'}</td>
+            <td>${l.contact ?? l.contact_value ?? '—'}</td>
+            <td class="text-sm">${fmtDate(l.created_at ?? l.date)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function categoryBadge(cat) {
+  if (!cat) return '—';
+  const lower = cat.toLowerCase();
+  if (lower.includes('взрос') || lower === 'adult') return '<span class="badge badge-blue">Взрослый</span>';
+  if (lower.includes('реб') || lower === 'child') return '<span class="badge badge-yellow">Ребёнок</span>';
+  return `<span class="badge badge-gray">${cat}</span>`;
+}
+
+// ===== CERTIFICATES =====
+async function loadCertificates() {
+  const el = document.getElementById('certificates-table');
+  el.innerHTML = loadingHtml();
+  const data = await api('/api/admin/gifts');
+  if (!data) { el.innerHTML = '<div class="loading">Ошибка загрузки</div>'; return; }
+  const rows = Array.isArray(data) ? data : (data.items || data.gifts || data.certificates || []);
+
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Имя</th><th>Сумма</th><th>Тип контакта</th><th>Контакт</th><th>Комментарий</th><th>Дата</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.length === 0 ? emptyTable(7) : rows.map(c => `
+          <tr>
+            <td class="text-muted text-sm">${c.id ?? '—'}</td>
+            <td class="fw-bold">${c.name ?? '—'}</td>
+            <td class="fw-bold" style="color:var(--green-dark)">${c.amount != null ? c.amount.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
+            <td class="text-sm">${c.contact_type ?? c.contact_kind ?? '—'}</td>
+            <td>${c.contact ?? c.contact_value ?? '—'}</td>
+            <td class="text-sm text-muted" style="max-width:180px;word-break:break-word">${c.comment ?? '—'}</td>
+            <td class="text-sm">${fmtDate(c.created_at ?? c.date)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ===== TOURNAMENTS =====
+let tournamentFormVisible = false;
+
+function toggleTournamentForm() {
+  tournamentFormVisible = !tournamentFormVisible;
+  document.getElementById('tournament-form-wrap').style.display = tournamentFormVisible ? 'block' : 'none';
+}
+
+async function loadTournaments() {
+  const el = document.getElementById('tournaments-table');
+  el.innerHTML = loadingHtml();
+  const data = await api('/api/admin/tournaments');
+  if (!data) { el.innerHTML = '<div class="loading">Ошибка загрузки</div>'; return; }
+  const rows = Array.isArray(data) ? data : (data.items || data.tournaments || []);
+
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Название</th><th>Вид спорта</th><th>Статус</th>
+          <th>Дата</th><th>Взнос</th><th>Опубликован</th><th>Действие</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.length === 0 ? emptyTable(8) : rows.map(t => `
+          <tr>
+            <td class="text-muted text-sm">${t.id ?? '—'}</td>
+            <td class="fw-bold">${t.title ?? t.name ?? '—'}</td>
+            <td>${sportBadge(t.sport ?? t.sport_type)}</td>
+            <td>${statusBadge(t.status)}</td>
+            <td class="text-sm">${t.date ?? fmtDate(t.starts_at ?? t.created_at) ?? '—'}</td>
+            <td class="text-sm">${t.entry_fee != null ? t.entry_fee.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
+            <td>${t.is_published || t.published ? '<span class="badge badge-green">Да</span>' : '<span class="badge badge-gray">Нет</span>'}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="deleteTournament(${t.id})">✕ Удалить</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+function sportBadge(sport) {
+  if (!sport) return '—';
+  const lower = sport.toLowerCase();
+  if (lower === 'padel' || lower === 'падел') return '<span class="badge badge-green">Падел</span>';
+  if (lower === 'tennis' || lower === 'теннис') return '<span class="badge badge-blue">Теннис</span>';
+  return `<span class="badge badge-gray">${sport}</span>`;
+}
+
+async function deleteTournament(id) {
+  if (!confirm('Удалить турнир #' + id + '?')) return;
+  const res = await api('/api/admin/tournaments/' + id, { method: 'DELETE' });
+  if (res !== null) { toast('Турнир удалён'); loadTournaments(); }
+}
+
+async function createTournament() {
+  const title = document.getElementById('t-title').value.trim();
+  if (!title) { toast('Введите название турнира', 'error'); return; }
+
+  const payload = {
+    title,
+    sport: document.getElementById('t-sport').value,
+    status: document.getElementById('t-status').value,
+    date: document.getElementById('t-date').value.trim() || null,
+    format: document.getElementById('t-format').value.trim() || null,
+    max_players: parseInt(document.getElementById('t-maxplayers').value) || null,
+    entry_fee: parseInt(document.getElementById('t-fee').value) || null,
+    is_published: document.getElementById('t-published').checked,
+  };
+
+  const res = await api('/api/admin/tournaments', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (res !== null) {
+    toast('Турнир создан!');
+    // reset form
+    document.getElementById('t-title').value = '';
+    document.getElementById('t-date').value = '';
+    document.getElementById('t-format').value = '';
+    document.getElementById('t-maxplayers').value = '';
+    document.getElementById('t-fee').value = '';
+    document.getElementById('t-published').checked = true;
+    toggleTournamentForm();
+    loadTournaments();
+  }
+}
+
+// ===== USERS =====
+async function loadUsers() {
+  const el = document.getElementById('users-table');
+  el.innerHTML = loadingHtml();
+  const data = await api('/api/admin/users');
+  if (!data) { el.innerHTML = '<div class="loading">Ошибка загрузки</div>'; return; }
+  const rows = Array.isArray(data) ? data : (data.items || data.users || []);
+
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>TG ID</th><th>Имя</th><th>Username</th><th>NTRP</th><th>Дата регистрации</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.length === 0 ? emptyTable(5) : rows.map(u => `
+          <tr>
+            <td class="text-muted text-sm">${u.telegram_id ?? u.tg_id ?? u.id ?? '—'}</td>
+            <td class="fw-bold">${u.full_name ?? u.name ?? '—'}</td>
+            <td class="text-muted">@${u.username ?? '—'}</td>
+            <td>${u.ntrp ?? '—'}</td>
+            <td class="text-sm">${fmtDate(u.created_at ?? u.registered_at)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+</script>
+</body>
+</html>
