@@ -160,6 +160,20 @@ async def admin_leads(_=Depends(get_current_admin), db: AsyncSession = Depends(g
     ]
 
 
+# ── Leads admin ────────────────────────────────────────────────
+
+@router.delete("/leads/{lead_id}")
+async def admin_delete_lead(lead_id: int, _=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    from app.models.lead import Lead
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Лид не найден")
+    await db.delete(lead)
+    await db.commit()
+    return {"ok": True}
+
+
 # ── Gifts admin ────────────────────────────────────────────────
 
 @router.get("/gifts")
@@ -172,6 +186,20 @@ async def admin_gifts(_=Depends(get_current_admin), db: AsyncSession = Depends(g
          "comment": g.comment, "created_at": g.created_at.isoformat() if g.created_at else None}
         for g in result.scalars().all()
     ]
+
+
+# ── Gifts delete ──────────────────────────────────────────────
+
+@router.delete("/gifts/{gift_id}")
+async def admin_delete_gift(gift_id: int, _=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    from app.models.gift import GiftCertificate
+    result = await db.execute(select(GiftCertificate).where(GiftCertificate.id == gift_id))
+    gift = result.scalar_one_or_none()
+    if not gift:
+        raise HTTPException(status_code=404, detail="Сертификат не найден")
+    await db.delete(gift)
+    await db.commit()
+    return {"ok": True}
 
 
 # ── Tournaments admin ──────────────────────────────────────────
