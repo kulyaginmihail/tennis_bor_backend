@@ -507,9 +507,7 @@
         <div class="nav-item" data-section="leads" onclick="showSection('leads')">
           <span class="nav-icon">📬</span> Лиды
         </div>
-        <div class="nav-item" data-section="certificates" onclick="showSection('certificates')">
-          <span class="nav-icon">🎁</span> Сертификаты
-        </div>
+        <div class="nav-item" data-section="events" onclick="showSection('events')"><span class="nav-icon">📅</span> События</div>
         <div class="nav-item" data-section="tournaments" onclick="showSection('tournaments')">
           <span class="nav-icon">🏆</span> Турниры
         </div>
@@ -566,13 +564,60 @@
         </div>
       </div>
 
-      <!-- CERTIFICATES -->
-      <div id="section-certificates" class="section">
+      <!-- EVENTS -->
+      <div id="section-events" class="section">
         <div class="section-header">
-          <div class="section-title" style="margin-bottom:0">🎁 Сертификаты</div>
-          <button class="btn btn-primary" onclick="loadCertificates()">↻ Обновить</button>
+          <div class="section-title" style="margin-bottom:0">📅 События на главной</div>
+          <button class="btn btn-primary" onclick="toggleEventForm()">+ Добавить событие</button>
         </div>
-        <div class="table-wrap" id="certificates-table">
+
+        <div id="event-form-wrap" style="display:none" class="mt-20">
+          <div class="form-card">
+            <div class="form-title">Новое событие</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Заголовок *</label>
+                <input type="text" id="ev-title" placeholder="Открытый чемпионат" />
+              </div>
+              <div class="form-group">
+                <label>Подзаголовок</label>
+                <input type="text" id="ev-subtitle" placeholder="Необязательно" />
+              </div>
+              <div class="form-group">
+                <label>Цвет</label>
+                <select id="ev-color">
+                  <option value="default">Default</option>
+                  <option value="lime">Lime</option>
+                  <option value="cream">Cream</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Ссылка</label>
+                <select id="ev-link">
+                  <option value="sparring">Спарринг</option>
+                  <option value="tournaments">Турниры</option>
+                  <option value="prices">Цены</option>
+                  <option value="coaches">Тренеры</option>
+                  <option value="about">О нас</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Порядок</label>
+                <input type="number" id="ev-sort" placeholder="0" value="0" min="0" />
+              </div>
+              <div class="form-group checkbox-group">
+                <input type="checkbox" id="ev-published" checked />
+                <label for="ev-published">Опубликовать</label>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn btn-primary" onclick="createEvent()">Создать</button>
+              <button class="btn btn-secondary" onclick="toggleEventForm()">Отмена</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap mt-20" id="events-table">
           <div class="loading"><div class="spinner"></div> Загрузка...</div>
         </div>
       </div>
@@ -765,7 +810,7 @@ function showSection(name) {
     matches: loadMatches,
     sparring: loadSparringRequests,
     leads: loadLeads,
-    certificates: loadCertificates,
+    events: loadEvents,
     tournaments: loadTournaments,
     users: loadUsers,
   };
@@ -796,12 +841,12 @@ async function loadDashboard() {
   if (!data) { grid.innerHTML = '<div class="loading">Не удалось загрузить данные</div>'; return; }
 
   const cards = [
-    { icon: '👥', label: 'Пользователей', value: data.users ?? data.users_count ?? '—' },
-    { icon: '🎾', label: 'Активных матчей', value: data.active_matches ?? '—' },
+    { icon: '👥', label: 'Пользователей', value: data.users_total ?? '—' },
+    { icon: '🎾', label: 'Активных матчей', value: data.matches_active ?? '—' },
     { icon: '📋', label: 'Заявок на спарринг', value: data.sparring_requests ?? '—' },
-    { icon: '📬', label: 'Лидов', value: data.leads ?? '—' },
-    { icon: '🎁', label: 'Сертификатов', value: data.gifts ?? data.certificates ?? '—' },
-    { icon: '🏆', label: 'Турниров', value: data.tournaments ?? '—' },
+    { icon: '📬', label: 'Лидов', value: data.leads_total ?? '—' },
+    { icon: '🏆', label: 'Турниров', value: data.tournaments_total ?? '—' },
+    { icon: '📅', label: 'Активных событий', value: data.events_total ?? '—' },
   ].filter(c => c.value !== undefined);
 
   grid.innerHTML = cards.map(c => `
@@ -957,35 +1002,91 @@ function categoryBadge(cat) {
   return `<span class="badge badge-gray">${cat}</span>`;
 }
 
-// ===== CERTIFICATES =====
-async function loadCertificates() {
-  const el = document.getElementById('certificates-table');
+// ===== EVENTS =====
+let eventFormVisible = false;
+
+function toggleEventForm() {
+  eventFormVisible = !eventFormVisible;
+  document.getElementById('event-form-wrap').style.display = eventFormVisible ? 'block' : 'none';
+}
+
+async function loadEvents() {
+  const el = document.getElementById('events-table');
   el.innerHTML = loadingHtml();
-  const data = await api('/api/admin/gifts');
+  const data = await api('/api/admin/events');
   if (!data) { el.innerHTML = '<div class="loading">Ошибка загрузки</div>'; return; }
-  const rows = Array.isArray(data) ? data : (data.items || data.gifts || data.certificates || []);
+  const rows = Array.isArray(data) ? data : (data.items || data.events || []);
 
   el.innerHTML = `
     <table>
       <thead>
         <tr>
-          <th>ID</th><th>Имя</th><th>Сумма</th><th>Тип контакта</th><th>Контакт</th><th>Комментарий</th><th>Дата</th>
+          <th>ID</th><th>Заголовок</th><th>Подзаголовок</th><th>Цвет</th>
+          <th>Ссылка</th><th>Порядок</th><th>Активно</th><th>Действия</th>
         </tr>
       </thead>
       <tbody>
-        ${rows.length === 0 ? emptyTable(7) : rows.map(c => `
+        ${rows.length === 0 ? emptyTable(8) : rows.map(e => `
           <tr>
-            <td class="text-muted text-sm">${c.id ?? '—'}</td>
-            <td class="fw-bold">${c.name ?? '—'}</td>
-            <td class="fw-bold" style="color:var(--green-dark)">${c.amount != null ? c.amount.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
-            <td class="text-sm">${c.contact_type ?? c.contact_kind ?? '—'}</td>
-            <td>${c.contact ?? c.contact_value ?? '—'}</td>
-            <td class="text-sm text-muted" style="max-width:180px;word-break:break-word">${c.comment ?? '—'}</td>
-            <td class="text-sm">${fmtDate(c.created_at ?? c.date)}</td>
+            <td class="text-muted text-sm">${e.id ?? '—'}</td>
+            <td class="fw-bold">${e.title ?? '—'}</td>
+            <td class="text-muted">${e.subtitle ?? '—'}</td>
+            <td class="text-sm">${e.color ?? '—'}</td>
+            <td class="text-sm">${e.link_to ?? '—'}</td>
+            <td class="text-sm">${e.sort_order ?? 0}</td>
+            <td>${e.is_active ? '<span class="badge badge-green">Да</span>' : '<span class="badge badge-gray">Нет</span>'}</td>
+            <td>
+              <div class="btn-group">
+                <button class="btn btn-secondary btn-sm" onclick="toggleEvent(${e.id})">${e.is_active ? 'Скрыть' : 'Показать'}</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">✕ Удалить</button>
+              </div>
+            </td>
           </tr>
         `).join('')}
       </tbody>
     </table>`;
+}
+
+async function toggleEvent(id) {
+  const res = await api('/api/admin/events/' + id, { method: 'PATCH' });
+  if (res !== null) { toast('Событие обновлено'); loadEvents(); }
+}
+
+async function deleteEvent(id) {
+  if (!confirm('Удалить событие #' + id + '?')) return;
+  const res = await api('/api/admin/events/' + id, { method: 'DELETE' });
+  if (res !== null) { toast('Событие удалено'); loadEvents(); }
+}
+
+async function createEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  if (!title) { toast('Введите заголовок события', 'error'); return; }
+
+  const subtitle = document.getElementById('ev-subtitle').value.trim();
+  const payload = {
+    title,
+    color: document.getElementById('ev-color').value,
+    link_to: document.getElementById('ev-link').value,
+    sort_order: parseInt(document.getElementById('ev-sort').value) || 0,
+    is_active: document.getElementById('ev-published').checked,
+  };
+  if (subtitle) payload.subtitle = subtitle;
+
+  const res = await api('/api/admin/events', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (res !== null) {
+    toast('Событие создано!');
+    document.getElementById('ev-title').value = '';
+    document.getElementById('ev-subtitle').value = '';
+    document.getElementById('ev-color').value = 'default';
+    document.getElementById('ev-link').value = 'sparring';
+    document.getElementById('ev-sort').value = '0';
+    document.getElementById('ev-published').checked = true;
+    toggleEventForm();
+    loadEvents();
+  }
 }
 
 // ===== TOURNAMENTS =====

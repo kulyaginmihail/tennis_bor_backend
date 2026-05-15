@@ -10,6 +10,7 @@ from app.models.tournament import Tournament, TournamentStatus, TournamentSport,
 from app.models.sparring import Match, MatchParticipant, SparringRequest, MatchStatus
 from app.models.user import User
 from app.models.stats import UserStats
+from app.models.event import HomeEvent
 from app.services.auth import hash_password, verify_password, create_access_token, get_current_admin
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -62,10 +63,22 @@ async def reset_admin_password(new_password: str, db: AsyncSession = Depends(get
 
 @router.get("/stats")
 async def get_stats(_=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    from app.models.lead import Lead
+    from app.models.gift import GiftCertificate
     users_total = (await db.execute(select(func.count(User.id)))).scalar()
     matches_active = (await db.execute(select(func.count(Match.id)).where(Match.status == MatchStatus.open))).scalar()
     sparring_requests = (await db.execute(select(func.count(SparringRequest.id)).where(SparringRequest.is_active == True))).scalar()
-    return {"users_total": users_total, "matches_active": matches_active, "sparring_requests": sparring_requests}
+    leads_total = (await db.execute(select(func.count(Lead.id)))).scalar()
+    tournaments_total = (await db.execute(select(func.count(Tournament.id)).where(Tournament.is_published == True))).scalar()
+    events_total = (await db.execute(select(func.count(HomeEvent.id)).where(HomeEvent.is_active == True))).scalar()
+    return {
+        "users_total": users_total,
+        "matches_active": matches_active,
+        "sparring_requests": sparring_requests,
+        "leads_total": leads_total,
+        "tournaments_total": tournaments_total,
+        "events_total": events_total,
+    }
 
 
 # ── Matches admin ──────────────────────────────────────────────
@@ -206,6 +219,62 @@ async def admin_delete_tournament(tournament_id: int, _=Depends(get_current_admi
     if not t:
         raise HTTPException(status_code=404, detail="Турнир не найден")
     t.is_published = False
+    await db.commit()
+    return {"ok": True}
+
+
+# ── Events admin ──────────────────────────────────────────────
+
+class EventCreate(BaseModel):
+    title: str
+    subtitle: Optional[str] = None
+    color: str = "default"
+    link_to: Optional[str] = None
+    sort_order: int = 0
+    is_active: bool = True
+
+
+@router.get("/events")
+async def admin_events(_=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(HomeEvent).order_by(HomeEvent.sort_order, HomeEvent.id))
+    return [
+        {"id": e.id, "title": e.title, "subtitle": e.subtitle,
+         "color": e.color, "link_to": e.link_to, "sort_order": e.sort_order,
+         "is_active": e.is_active,
+         "created_at": e.created_at.isoformat() if e.created_at else None}
+        for e in result.scalars().all()
+    ]
+
+
+@router.post("/events")
+async def admin_create_event(body: EventCreate, _=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    e = HomeEvent(
+        title=body.title, subtitle=body.subtitle, color=body.color,
+        link_to=body.link_to, sort_order=body.sort_order, is_active=body.is_active
+    )
+    db.add(e)
+    await db.commit()
+    return {"ok": True, "id": e.id}
+
+
+@router.patch("/events/{event_id}")
+async def admin_toggle_event(event_id: int, _=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(HomeEvent).where(HomeEvent.id == event_id))
+    e = result.scalar_one_or_none()
+    if not e:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    e.is_active = not e.is_active
+    await db.commit()
+    return {"ok": True, "is_active": e.is_active}
+
+
+@router.delete("/events/{event_id}")
+async def admin_delete_event(event_id: int, _=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(HomeEvent).where(HomeEvent.id == event_id))
+    e = result.scalar_one_or_none()
+    if not e:
+        raise HTTPException(status_code=404, detail="Событие не найдено")
+    await db.delete(e)
     await db.commit()
     return {"ok": True}
 

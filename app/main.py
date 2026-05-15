@@ -9,6 +9,7 @@ from app.database import init_db
 from app.routers import auth, sparring, tournaments, leads, gifts, admin
 from app.routers.stats import router as stats_router
 from app.routers.profile import router as profile_router
+from app.routers.events import router as events_router
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -44,6 +45,7 @@ app.include_router(gifts.router)
 app.include_router(admin.router)
 app.include_router(stats_router)
 app.include_router(profile_router)
+app.include_router(events_router)
 
 
 @app.get("/")
