@@ -9,9 +9,10 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 TELEGRAM_API = f"https://api.telegram.org/bot{settings.bot_token}"
-WEBAPP_URL = "https://tennis-bor-frontend.vercel.app"
+WEBAPP_URL  = "https://tennis-bor-frontend.vercel.app"
+BANNER_URL  = "https://raw.githubusercontent.com/kulyaginmihail/tennis_bor_frontend/main/bot_banner.jpg"
 
-WELCOME_TEXT = (
+WELCOME_CAPTION = (
     "🎾 *Теннисный центр БОР*\n\n"
     "Добро пожаловать\\! Здесь всё для падела и тенниса в одном приложении\\.\n\n"
     "*Что вас ждёт:*\n"
@@ -22,6 +23,12 @@ WELCOME_TEXT = (
     "Нажмите кнопку ниже, чтобы открыть приложение 👇"
 )
 
+OPEN_BUTTON = {
+    "inline_keyboard": [[
+        {"text": "🎾 Открыть приложение", "web_app": {"url": WEBAPP_URL}}
+    ]]
+}
+
 
 async def _post(method: str, payload: dict) -> dict:
     async with httpx.AsyncClient(timeout=10) as client:
@@ -30,19 +37,22 @@ async def _post(method: str, payload: dict) -> dict:
 
 
 async def send_start_message(chat_id: int) -> None:
-    await _post("sendMessage", {
+    # Отправляем баннер с текстом в подписи и кнопкой
+    result = await _post("sendPhoto", {
         "chat_id": chat_id,
-        "text": WELCOME_TEXT,
+        "photo": BANNER_URL,
+        "caption": WELCOME_CAPTION,
         "parse_mode": "MarkdownV2",
-        "reply_markup": {
-            "inline_keyboard": [[
-                {
-                    "text": "🎾 Открыть приложение",
-                    "web_app": {"url": WEBAPP_URL},
-                }
-            ]]
-        },
+        "reply_markup": OPEN_BUTTON,
     })
+    # Fallback: если фото не загрузилось — шлём текстом
+    if not result.get("ok"):
+        await _post("sendMessage", {
+            "chat_id": chat_id,
+            "text": WELCOME_CAPTION,
+            "parse_mode": "MarkdownV2",
+            "reply_markup": OPEN_BUTTON,
+        })
 
 
 async def handle_update(update: dict) -> None:
