@@ -10,8 +10,35 @@ from app.database import get_db
 from app.models.sparring import Match, MatchParticipant, SparringRequest, MatchFormat, MatchStatus
 from app.models.user import User
 from app.services.stats import get_or_create_stats, _update_streak, _update_elo, check_achievements
+from app.config import settings
 
 router = APIRouter(prefix="/api/sparring", tags=["sparring"])
+
+
+async def _notify_organizer_join(match, joiner_name: str, joiner_username: str | None):
+    """Отправляет организатору уведомление о том, что кто-то вступил в его матч."""
+    if not match.organizer_id:
+        return
+    token = settings.bot_token
+    if not token or token == "test":
+        return
+    try:
+        uname = f" (@{joiner_username})" if joiner_username else ""
+        slots_left = match.slots_total - match.slots_taken
+        status_line = "✅ Матч заполнен!" if slots_left == 0 else f"Осталось мест: {slots_left}"
+        text = (
+            f"🎾 *{joiner_name}{uname}* присоединился к вашему матчу!\n\n"
+            f"📅 {match.play_date or '—'}\n"
+            f"🏷 {match.title or 'Матч'}\n"
+            f"{status_line}"
+        )
+        async with httpx.AsyncClient(timeout=8) as client:
+            await client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": match.organizer_id, "text": text, "parse_mode": "Markdown"},
+            )
+    except Exception:
+        pass
 
 
 async def _get_or_create_user(db, user_id, first_name, last_name, username):
@@ -147,6 +174,10 @@ async def join_match(match_id: int, body: JoinMatchBody, db: AsyncSession = Depe
     if match.slots_taken >= match.slots_total:
         match.status = MatchStatus.full
     await db.commit()
+
+    # Уведомляем организатора в Telegram
+    await _notify_organizer_join(match, display_name, body.username)
+
     return {"ok": True, "slots_left": match.slots_total - match.slots_taken, "status": match.status}
 
 
