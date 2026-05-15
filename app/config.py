@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     bot_token: str = "test"
     admin_chat_id: int = 0
     admin_chat_ids: str = ""
+    base_url: str = "https://web-production-a316a.up.railway.app"
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/bor"
 

@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
@@ -10,6 +10,7 @@ from app.routers import auth, sparring, tournaments, leads, gifts, admin
 from app.routers.stats import router as stats_router
 from app.routers.profile import router as profile_router
 from app.routers.events import router as events_router
+from app.bot import setup_bot, handle_update
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -19,6 +20,7 @@ async def lifespan(app: FastAPI):
     os.makedirs(os.path.join(BASE_DIR, "admin"), exist_ok=True)
     await init_db()
     print(f"✅ БОР — база данных инициализирована")
+    await setup_bot(settings.base_url)
     yield
     print("👋 Сервер остановлен")
 
@@ -56,3 +58,12 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.post("/bot/webhook/{token}")
+async def bot_webhook(token: str, request: Request):
+    if token != settings.bot_token:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    update = await request.json()
+    await handle_update(update)
+    return {"ok": True}
