@@ -1,7 +1,11 @@
+import asyncio
+import logging
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 engine = create_async_engine(settings.database_url, echo=False, pool_size=10, max_overflow=20)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -25,9 +29,20 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    async with engine.begin() as conn:
-        from app.models import user, sparring, stats, tournament, lead, gift  # noqa
-        await conn.run_sync(Base.metadata.create_all)
+    # Retry — Railway иногда поднимает Postgres медленнее чем web-сервис
+    max_attempts = 10
+    for attempt in range(1, max_attempts + 1):
+        try:
+            async with engine.begin() as conn:
+                from app.models import user, sparring, stats, tournament, lead, gift  # noqa
+                await conn.run_sync(Base.metadata.create_all)
+            break
+        except Exception as e:
+            if attempt == max_attempts:
+                raise
+            wait = attempt * 2
+            logger.warning(f"DB unavailable (attempt {attempt}/{max_attempts}), retry in {wait}s: {e}")
+            await asyncio.sleep(wait)
 
     migrations = [
         # Make nullable columns safe
