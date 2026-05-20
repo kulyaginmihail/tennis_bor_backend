@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import asyncio
 import os
 
 from app.config import settings
@@ -15,12 +16,21 @@ from app.bot import setup_bot, handle_update
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+async def _background_startup():
+    """DB init + bot setup в фоне — не блокирует healthcheck."""
+    try:
+        await init_db()
+        print("✅ БОР — база данных инициализирована")
+        await setup_bot(settings.base_url)
+    except Exception as e:
+        print(f"❌ Startup error: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs(os.path.join(BASE_DIR, "admin"), exist_ok=True)
-    await init_db()
-    print(f"✅ БОР — база данных инициализирована")
-    await setup_bot(settings.base_url)
+    # Запускаем в фоне — сервер сразу принимает запросы и проходит healthcheck
+    asyncio.create_task(_background_startup())
     yield
     print("👋 Сервер остановлен")
 
