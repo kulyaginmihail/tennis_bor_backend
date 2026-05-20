@@ -21,9 +21,15 @@ class Settings(BaseSettings):
         # Railway provides DATABASE_URL as postgresql:// — asyncpg needs postgresql+asyncpg://
         url = self.database_url
         if url.startswith("postgresql://"):
-            object.__setattr__(self, "database_url", url.replace("postgresql://", "postgresql+asyncpg://", 1))
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgres://"):
-            object.__setattr__(self, "database_url", url.replace("postgres://", "postgresql+asyncpg://", 1))
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+
+        # Внешние подключения (не Railway internal) требуют SSL
+        if "railway.internal" not in url and "localhost" not in url and "127.0.0.1" not in url:
+            url = url + ("&ssl=true" if "?" in url else "?ssl=true")
+
+        object.__setattr__(self, "database_url", url)
 
 
 settings = Settings()
