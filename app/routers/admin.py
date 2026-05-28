@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.database import get_db
-from app.models.tournament import Tournament, TournamentStatus, TournamentSport, Admin
+from app.models.tournament import Tournament, TournamentRegistration, TournamentStatus, TournamentSport, Admin
 from app.models.sparring import Match, MatchParticipant, SparringRequest, MatchStatus
 from app.models.user import User
 from app.models.stats import UserStats
@@ -219,12 +219,41 @@ class TournamentCreate(BaseModel):
 @router.get("/tournaments")
 async def admin_tournaments(_=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Tournament).order_by(desc(Tournament.created_at)).limit(100))
+    tournaments = result.scalars().all()
+
+    # Считаем заявки по каждому турниру
+    reg_counts: dict[int, int] = {}
+    if tournaments:
+        ids = [t.id for t in tournaments]
+        counts_res = await db.execute(
+            select(TournamentRegistration.tournament_id, func.count(TournamentRegistration.id))
+            .where(TournamentRegistration.tournament_id.in_(ids))
+            .group_by(TournamentRegistration.tournament_id)
+        )
+        reg_counts = {row[0]: row[1] for row in counts_res.all()}
+
     return [
         {"id": t.id, "title": t.title, "sport": t.sport.value if hasattr(t.sport, "value") else t.sport,
          "status": t.status.value if hasattr(t.status, "value") else t.status,
          "play_date": t.play_date, "entry_fee": t.entry_fee,
-         "max_participants": t.max_participants, "is_published": t.is_published}
-        for t in result.scalars().all()
+         "max_participants": t.max_participants, "is_published": t.is_published,
+         "registrations_count": reg_counts.get(t.id, 0)}
+        for t in tournaments
+    ]
+
+
+@router.get("/tournaments/{tournament_id}/registrations")
+async def admin_tournament_registrations(tournament_id: int, _=Depends(get_current_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(TournamentRegistration)
+        .where(TournamentRegistration.tournament_id == tournament_id)
+        .order_by(desc(TournamentRegistration.created_at))
+    )
+    regs = result.scalars().all()
+    return [
+        {"id": r.id, "name": r.name, "contact": r.contact, "comment": r.comment,
+         "created_at": r.created_at.isoformat() if r.created_at else None}
+        for r in regs
     ]
 
 

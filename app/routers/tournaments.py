@@ -6,7 +6,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 from app.database import get_db
-from app.models.tournament import Tournament, TournamentParticipant, TournamentStatus, TournamentSport
+from app.models.tournament import Tournament, TournamentParticipant, TournamentRegistration, TournamentStatus, TournamentSport
 
 router = APIRouter(prefix="/api/tournaments", tags=["tournaments"])
 
@@ -66,5 +66,32 @@ async def join_tournament(tournament_id: int, body: JoinTournamentBody, db: Asyn
         tournament_id=tournament_id, user_id=body.user_id, user_name=display
     )
     db.add(participant)
+    await db.commit()
+    return {"ok": True}
+
+
+class RegisterTournamentBody(BaseModel):
+    name: str
+    contact: str                  # телефон или @username
+    comment: Optional[str] = None
+
+
+@router.post("/{tournament_id}/register")
+async def register_tournament(tournament_id: int, body: RegisterTournamentBody, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Tournament).where(Tournament.id == tournament_id))
+    t = res.scalar_one_or_none()
+    if not t:
+        raise HTTPException(status_code=404, detail="Турнир не найден")
+    if not t.is_published:
+        raise HTTPException(status_code=400, detail="Регистрация закрыта")
+
+    reg = TournamentRegistration(
+        tournament_id=tournament_id,
+        tournament_title=t.title,
+        name=body.name.strip(),
+        contact=body.contact.strip(),
+        comment=body.comment.strip() if body.comment else None,
+    )
+    db.add(reg)
     await db.commit()
     return {"ok": True}

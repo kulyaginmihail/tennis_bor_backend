@@ -704,6 +704,19 @@
 <!-- TOAST CONTAINER -->
 <div id="toast-container"></div>
 
+<!-- TOURNAMENT REGISTRATIONS MODAL -->
+<div id="reg-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;" onclick="closeRegModal()">
+  <div style="background:#1e2a1e;border-radius:14px;padding:28px;width:min(90vw,640px);max-height:80vh;display:flex;flex-direction:column;gap:16px" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:18px;font-weight:700;color:#e8f5e9" id="reg-modal-title">Заявки на турнир</div>
+      <button onclick="closeRegModal()" style="background:none;border:none;color:#a5d6a7;font-size:22px;cursor:pointer">✕</button>
+    </div>
+    <div id="reg-modal-body" style="overflow-y:auto;flex:1">
+      <div class="loading"><div class="spinner"></div> Загрузка...</div>
+    </div>
+  </div>
+</div>
+
 <script>
 const API = '';
 let currentSection = 'dashboard';
@@ -1109,19 +1122,24 @@ async function loadTournaments() {
       <thead>
         <tr>
           <th>ID</th><th>Название</th><th>Вид спорта</th><th>Статус</th>
-          <th>Дата</th><th>Взнос</th><th>Опубликован</th><th>Действие</th>
+          <th>Дата</th><th>Взнос</th><th>Опубликован</th><th>Заявки</th><th>Действие</th>
         </tr>
       </thead>
       <tbody>
-        ${rows.length === 0 ? emptyTable(8) : rows.map(t => `
+        ${rows.length === 0 ? emptyTable(9) : rows.map(t => `
           <tr>
             <td class="text-muted text-sm">${t.id ?? '—'}</td>
             <td class="fw-bold">${t.title ?? t.name ?? '—'}</td>
             <td>${sportBadge(t.sport ?? t.sport_type)}</td>
             <td>${statusBadge(t.status)}</td>
-            <td class="text-sm">${t.date ?? fmtDate(t.starts_at ?? t.created_at) ?? '—'}</td>
+            <td class="text-sm">${t.date ?? t.play_date ?? fmtDate(t.starts_at ?? t.created_at) ?? '—'}</td>
             <td class="text-sm">${t.entry_fee != null ? t.entry_fee.toLocaleString('ru-RU') + ' ₽' : '—'}</td>
             <td>${t.is_published || t.published ? '<span class="badge badge-green">Да</span>' : '<span class="badge badge-gray">Нет</span>'}</td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="openRegModal(${t.id}, '${(t.title ?? '').replace(/'/g, "\\'")}')">
+                📋 Заявки${t.registrations_count > 0 ? ` <span class="badge badge-green" style="margin-left:4px">${t.registrations_count}</span>` : ''}
+              </button>
+            </td>
             <td><button class="btn btn-danger btn-sm" onclick="deleteTournament(${t.id})">✕ Удалить</button></td>
           </tr>
         `).join('')}
@@ -1141,6 +1159,43 @@ async function deleteTournament(id) {
   if (!confirm('Удалить турнир #' + id + '?')) return;
   const res = await api('/api/admin/tournaments/' + id, { method: 'DELETE' });
   if (res !== null) { toast('Турнир удалён'); loadTournaments(); }
+}
+
+function openRegModal(tournamentId, tournamentTitle) {
+  const overlay = document.getElementById('reg-modal-overlay');
+  document.getElementById('reg-modal-title').textContent = '📋 Заявки: ' + tournamentTitle;
+  document.getElementById('reg-modal-body').innerHTML = '<div class="loading"><div class="spinner"></div> Загрузка...</div>';
+  overlay.style.display = 'flex';
+  loadTournamentRegistrations(tournamentId);
+}
+
+function closeRegModal() {
+  document.getElementById('reg-modal-overlay').style.display = 'none';
+}
+
+async function loadTournamentRegistrations(tournamentId) {
+  const el = document.getElementById('reg-modal-body');
+  const data = await api('/api/admin/tournaments/' + tournamentId + '/registrations');
+  if (!data) { el.innerHTML = '<div class="loading">Ошибка загрузки</div>'; return; }
+  if (data.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:#a5d6a7;padding:32px">Заявок пока нет</div>';
+    return;
+  }
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>#</th><th>Имя</th><th>Контакт</th><th>Комментарий</th><th>Дата</th></tr></thead>
+      <tbody>
+        ${data.map((r, i) => `
+          <tr>
+            <td class="text-muted text-sm">${i + 1}</td>
+            <td class="fw-bold">${r.name ?? '—'}</td>
+            <td class="text-sm">${r.contact ?? '—'}</td>
+            <td class="text-sm text-muted">${r.comment ?? '—'}</td>
+            <td class="text-sm text-muted">${r.created_at ? new Date(r.created_at).toLocaleString('ru-RU') : '—'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
 }
 
 async function createTournament() {

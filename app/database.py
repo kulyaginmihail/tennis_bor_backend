@@ -119,6 +119,18 @@ async def init_db():
             END IF;
         END $$;
         """,
+        # Create tournament_registrations table if not exists
+        """
+        CREATE TABLE IF NOT EXISTS tournament_registrations (
+            id SERIAL PRIMARY KEY,
+            tournament_id INTEGER NOT NULL,
+            tournament_title VARCHAR(256),
+            name VARCHAR(128) NOT NULL,
+            contact VARCHAR(128) NOT NULL,
+            comment TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        """,
     ]
 
     for sql in migrations:

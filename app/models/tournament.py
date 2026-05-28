@@ -49,6 +49,21 @@ class TournamentParticipant(Base):
     )
 
 
+class TournamentRegistration(Base):
+    """Заявки на турнир через лид-форму (без авторизации)."""
+    __tablename__ = "tournament_registrations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tournament_id: Mapped[int] = mapped_column(Integer)
+    tournament_title: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    name: Mapped[str] = mapped_column(String(128))
+    contact: Mapped[str] = mapped_column(String(128))   # телефон или @username
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class Admin(Base):
     __tablename__ = "admins"
 
