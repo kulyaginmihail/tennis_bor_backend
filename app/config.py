@@ -25,9 +25,15 @@ class Settings(BaseSettings):
         elif url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
 
-        # Внешние подключения (не Railway internal) требуют SSL
-        if "railway.internal" not in url and "localhost" not in url and "127.0.0.1" not in url:
-            url = url + ("&ssl=true" if "?" in url else "?ssl=true")
+        # Запоминаем нужен ли SSL (для внешних подключений)
+        # НЕ добавляем ?ssl=true в URL — это вызывает верификацию сертификата
+        # SSL передаётся через connect_args в database.py
+        is_external = (
+            "railway.internal" not in url
+            and "localhost" not in url
+            and "127.0.0.1" not in url
+        )
+        object.__setattr__(self, "_needs_ssl", is_external)
 
         object.__setattr__(self, "database_url", url)
 

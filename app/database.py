@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import ssl
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import text
@@ -7,11 +8,20 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Для внешних Railway Postgres нужен SSL без верификации сертификата
+_connect_args = {}
+if getattr(settings, "_needs_ssl", False):
+    _ssl_ctx = ssl.create_default_context()
+    _ssl_ctx.check_hostname = False
+    _ssl_ctx.verify_mode = ssl.CERT_NONE
+    _connect_args = {"ssl": _ssl_ctx}
+
 engine = create_async_engine(
     settings.database_url,
     echo=False,
     pool_size=5,
     max_overflow=10,
+    connect_args=_connect_args,
 )
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 AsyncSessionFactory = AsyncSessionLocal
