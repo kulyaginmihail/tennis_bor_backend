@@ -751,7 +751,11 @@ async function api(path, options = {}) {
     }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || `HTTP ${res.status}`);
+      const detail = err.detail;
+      const msg = Array.isArray(detail)
+        ? detail.map(e => e.msg || JSON.stringify(e)).join('; ')
+        : (typeof detail === 'string' ? detail : `HTTP ${res.status}`);
+      throw new Error(msg);
     }
     return res.json();
   } catch (e) {
@@ -1206,10 +1210,10 @@ async function createTournament() {
     title,
     sport: document.getElementById('t-sport').value,
     status: document.getElementById('t-status').value,
-    date: document.getElementById('t-date').value.trim() || null,
+    play_date: document.getElementById('t-date').value.trim() || '—',
     format: document.getElementById('t-format').value.trim() || null,
-    max_players: parseInt(document.getElementById('t-maxplayers').value) || null,
-    entry_fee: parseInt(document.getElementById('t-fee').value) || null,
+    max_participants: parseInt(document.getElementById('t-maxplayers').value) || null,
+    entry_fee: parseFloat(document.getElementById('t-fee').value) || null,
     is_published: document.getElementById('t-published').checked,
   };
 
